@@ -11,8 +11,7 @@
         input[type="text"], select { padding: 10px; width: 80%; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; font-size: 16px; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; margin-top: 20px; max-height: 400px; overflow-y: auto; padding: 10px; border: 1px solid #eee; border-radius: 8px; }
         .q-box { background: #f9f9f9; padding: 10px; border-radius: 5px; border-bottom: 2px solid #3498db; font-weight: bold; }
-        .user-ans { width: 60px; padding: 8px; margin-left: 5px; border: 2px solid #ccc; border-radius: 5px; text-align: center; font-size: 18px; }
-        /* Markera rutan som är aktiv */
+        .user-ans { width: 60px; padding: 8px; margin-left: 5px; border: 2px solid #ccc; border-radius: 5px; text-align: center; font-size: 18px; transition: all 0.1s; }
         .user-ans:focus { border-color: #3498db; outline: none; background: #fffde7; }
         #timer { font-size: 28px; color: #e74c3c; font-weight: bold; margin-bottom: 15px; }
         button { cursor: pointer; padding: 12px 25px; font-size: 16px; border: none; border-radius: 5px; transition: 0.3s; font-weight: bold; }
@@ -27,9 +26,9 @@
 
 <div class="container" id="setup">
     <h2>✖️ Mattetest (0-10)</h2>
-    <p>Skriv ditt namn för att börja.</p>
-    <input type="text" id="studentName" placeholder="Ditt namn..." required><br>
-    <label style="display:block; margin-top:15px;">Välj tid:</label>
+    <p>Skriv ditt namn och välj tid för att börja.</p>
+    <input type="text" id="studentName" placeholder="Elevens fullständiga namn" required><br>
+    <label style="display:block; margin-top:15px;">Välj tidsgräns:</label>
     <select id="duration">
         <option value="240">4 Minuter</option>
         <option value="300" selected>5 Minuter</option>
@@ -40,9 +39,7 @@
 
 <div class="container hidden" id="quiz-area">
     <div id="timer">Tid kvar: --:--</div>
-    <form id="quiz-form" onsubmit="return false;">
-        <div class="grid" id="question-grid"></div>
-    </form>
+    <div class="grid" id="question-grid"></div>
     <button class="btn-finish" onclick="finishQuiz()">Jag är klar!</button>
 </div>
 
@@ -52,12 +49,15 @@
         <p id="finalScore"></p>
         <p id="finalTime"></p>
     </div>
-    <button id="submitBtn" class="btn-submit" onclick="sendToGoogleSheet()">Skicka till lärare</button>
+    <button id="submitBtn" class="btn-submit" onclick="sendToGoogleSheet()">Skicka resultat till läraren</button>
     <p id="statusMsg" style="margin-top:15px; font-weight:bold; color:#27ae60;"></p>
 </div>
 
 <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxwmZ2DAbUYP6wIAutMI2gz6DJ3LlshZFwaN7hbKHxQRwF7BgipORQBK5tp3tOFqIs3EA/exec";
+    
+    // Dina exakta 92 uppgifter
+    const rawTasks = "2x3, 5x4, 0x8, 1x4, 8x4, 6x3, 9x4, 10x9, 5x6, 6x1, 9x6, 10x2, 4x1, 9x3, 1x8, 7x5, 6x6, 9x5, 8x7, 6x4, 7x2, 1x5, 2x9, 3x4, 6x7, 10x5, 3x9, 1x7, 2x8, 4x3, 8x6, 4x5, 7x4, 2x6, 3x7, 2x1, 3x6, 8x5, 4x7, 2x4, 7x9, 5x2, 9x1, 4x10, 2x5, 8x1, 7x1, 8x2, 9x9, 6x2, 7x7, 3x3, 5x1, 9x2, 8x8, 6x9, 10x3, 6x5, 9x7, 4x8, 3x5, 8x10, 1x2, 2x7, 3x8, 10x7, 6x8, 3x1, 8x3, 4x6, 4x2, 5x8, 7x6, 5x3, 6x10, 7x8, 3x2, 1x6, 4x9, 5x5, 7x0, 8x9, 10x10, 7x3, 5x9, 10x6, 1x9, 2x2, 9x8, 1x3, 5x7, 4x4";
     
     let timeLeft;
     let initialTime;
@@ -65,14 +65,11 @@
 
     function startQuiz() {
         const name = document.getElementById('studentName').value;
-        if(!name) return alert("Skriv ditt namn!");
-
+        if(!name) return alert("Vänligen fyll i ditt namn!");
         initialTime = parseInt(document.getElementById('duration').value);
         timeLeft = initialTime;
-        
         document.getElementById('setup').classList.add('hidden');
         document.getElementById('quiz-area').classList.remove('hidden');
-        
         generateQuestions();
         startTimer();
     }
@@ -81,25 +78,110 @@
         const grid = document.getElementById('question-grid');
         grid.innerHTML = ""; 
 
-        let allPossible = [];
-        for(let a = 0; a <= 10; a++) {
-            for(let b = 0; b <= 10; b++) {
-                allPossible.push({a, b});
-            }
-        }
+        // Gör om textsträngen till en lista med objekt
+        let taskList = rawTasks.split(', ').map(item => {
+            let parts = item.split('x');
+            return { a: parts[0], b: parts[1], correct: parseInt(parts[0]) * parseInt(parts[1]) };
+        });
 
-        // Blanda frågorna
-        for (let i = allPossible.length - 1; i > 0; i--) {
+        // Slumpa listan (Fisher-Yates)
+        for (let i = taskList.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
-            [allPossible[i], allPossible[j]] = [allPossible[j], allPossible[i]];
+            [taskList[i], taskList[j]] = [taskList[j], taskList[i]];
         }
 
-        const selected = allPossible.slice(0, 92);
-        
-        selected.forEach((q) => {
+        taskList.forEach((q) => {
             const div = document.createElement('div');
             div.className = 'q-box';
             div.innerHTML = `${q.a} × ${q.b} = `;
             
             const input = document.createElement('input');
-            input
+            input.type = 'text'; 
+            input.inputMode = 'numeric'; 
+            input.className = 'user-ans';
+            input.setAttribute('data-correct', q.correct);
+            
+            // DENNA FUNKTION Tvingar fram hoppet vid ENTER
+            input.onkeydown = function(e) {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    const allInputs = Array.from(document.querySelectorAll('.user-ans'));
+                    const nextIdx = allInputs.indexOf(this) + 1;
+                    if (nextIdx < allInputs.length) {
+                        allInputs[nextIdx].focus();
+                    } else {
+                        finishQuiz();
+                    }
+                }
+            };
+            
+            div.appendChild(input);
+            grid.appendChild(div);
+        });
+
+        setTimeout(() => { document.querySelector('.user-ans').focus(); }, 200);
+    }
+
+    function startTimer() {
+        timerId = setInterval(() => {
+            timeLeft--;
+            updateTimerDisplay();
+            if(timeLeft <= 0) finishQuiz();
+        }, 1000);
+    }
+
+    function updateTimerDisplay() {
+        let mins = Math.floor(timeLeft / 60);
+        let secs = timeLeft % 60;
+        document.getElementById('timer').innerText = `Tid kvar: ${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+
+    function finishQuiz() {
+        clearInterval(timerId);
+        let correct = 0;
+        const inputs = document.querySelectorAll('.user-ans');
+        inputs.forEach(input => {
+            if(input.value.trim() !== "" && parseInt(input.value) === parseInt(input.getAttribute('data-correct'))) {
+                correct++;
+            }
+        });
+
+        const timeSpentSeconds = initialTime - timeLeft;
+        const mSpent = Math.floor(timeSpentSeconds / 60);
+        const sSpent = timeSpentSeconds % 60;
+
+        document.getElementById('quiz-area').classList.add('hidden');
+        document.getElementById('results').classList.remove('hidden');
+        document.getElementById('finalScore').innerText = `Rätt svar: ${correct} / 92`;
+        document.getElementById('finalTime').innerText = `Tid: ${mSpent}m ${sSpent}s`;
+    }
+
+    async function sendToGoogleSheet() {
+        const btn = document.getElementById('submitBtn');
+        const status = document.getElementById('statusMsg');
+        const name = document.getElementById('studentName').value;
+        const score = document.getElementById('finalScore').innerText;
+        const timeTaken = document.getElementById('finalTime').innerText;
+
+        btn.disabled = true;
+        btn.innerText = "Skickar...";
+        status.innerText = "Sparar resultat...";
+
+        try {
+            await fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, score, time: timeTaken })
+            });
+            status.innerText = "✅ Klart! Dina resultat har sparats.";
+            btn.style.display = "none";
+        } catch (error) {
+            status.innerText = "❌ Fel. Visa skärmen för läraren.";
+            btn.disabled = false;
+        }
+    }
+</script>
+
+</body>
+</html>
