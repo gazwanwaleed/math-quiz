@@ -14,11 +14,12 @@
         .user-ans { width: 60px; padding: 8px; margin-left: 5px; border: 2px solid #ccc; border-radius: 5px; text-align: center; font-size: 18px; }
         .user-ans:focus { border-color: #3498db; outline: none; background: #fffde7; }
         #timer { font-size: 28px; color: #e74c3c; font-weight: bold; margin-bottom: 15px; }
-        button { cursor: pointer; padding: 12px 25px; font-size: 16px; border: none; border-radius: 5px; transition: 0.3s; font-weight: bold; }
+        button { cursor: pointer; padding: 12px 25px; font-size: 16px; border: none; border-radius: 5px; transition: 0.3s; font-weight: bold; display: inline-block; }
         .btn-start { background: #2ecc71; color: white; }
         .btn-finish { background: #3498db; color: white; margin-top: 20px; }
         .btn-submit { background: #9b59b6; color: white; padding: 15px 40px; font-size: 18px; }
-        .hidden { display: none; }
+        .hidden { display: none !important; }
+        .results-box { font-size: 20px; margin: 20px 0; line-height: 1.6; }
     </style>
 </head>
 <body>
@@ -26,11 +27,24 @@
 <div class="container" id="setup">
     <h2>✖️ Mattetest (0-10)</h2>
     <p>Fyll i ditt namn och välj tid för att börja.</p>
-    <input type="text" id="studentName" placeholder="Ditt fullständiga namn" required><br>
+    <input type="text" id="studentName" placeholder="Elevens fullständiga namn" required><br>
     <label style="display:block; margin-top:15px;">Välj tidsgräns:</label>
     <select id="duration">
         <option value="240">4 Minuter</option>
         <option value="300" selected>5 Minuter</option>
         <option value="360">6 Minuter</option>
     </select><br><br>
-    <button class="btn-start"
+    <button type="button" class="btn-start" onclick="startQuiz()">Starta utmaningen</button>
+</div>
+
+<div class="container hidden" id="quiz-area">
+    <div id="timer">Tid kvar: --:--</div>
+    <div class="grid" id="question-grid"></div>
+    <button type="button" class="btn-finish" onclick="finishQuiz()">Jag är klar!</button>
+</div>
+
+<div class="container hidden" id="results">
+    <h2>🎉 Bra jobbat!</h2>
+    <div class="results-box">
+        <p id="finalScore"></p>
+        <p id="finalTime"></p>
