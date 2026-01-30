@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sv">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Math Speed Challenge (0-10)</title>
+    <title>Mattestyrkan (0-10)</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: #eef2f3; padding: 20px; color: #333; }
         .container { max-width: 700px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
@@ -24,31 +24,31 @@
 <body>
 
 <div class="container" id="setup">
-    <h2>✖️ Math Speed Test (0-10)</h2>
-    <p>Enter your details and choose your time limit to begin.</p>
-    <input type="text" id="studentName" placeholder="Student Full Name" required><br>
-    <label style="display:block; margin-top:15px;">Choose Time Limit:</label>
+    <h2>✖️ Mattetest (0-10)</h2>
+    <p>Skriv ditt namn och välj tid för att börja.</p>
+    <input type="text" id="studentName" placeholder="Elevens fullständiga namn" required><br>
+    <label style="display:block; margin-top:15px;">Välj tidsgräns:</label>
     <select id="duration">
-        <option value="240">4 Minutes</option>
-        <option value="300" selected>5 Minutes</option>
-        <option value="360">6 Minutes</option>
+        <option value="240">4 Minuter</option>
+        <option value="300" selected>5 Minuter</option>
+        <option value="360">6 Minuter</option>
     </select><br><br>
-    <button class="btn-start" onclick="startQuiz()">Start Challenge</button>
+    <button class="btn-start" onclick="startQuiz()">Starta utmaningen</button>
 </div>
 
 <div class="container hidden" id="quiz-area">
-    <div id="timer">Time Remaining: --:--</div>
+    <div id="timer">Tid kvar: --:--</div>
     <div class="grid" id="question-grid"></div>
-    <button class="btn-finish" onclick="finishQuiz()">I'm Finished!</button>
+    <button class="btn-finish" id="finishBtn" onclick="finishQuiz()">Jag är klar!</button>
 </div>
 
 <div class="container hidden" id="results">
-    <h2>🎉 Challenge Complete!</h2>
+    <h2>🎉 Utmaningen klar!</h2>
     <div class="results-box">
         <p id="finalScore"></p>
         <p id="finalTime"></p>
     </div>
-    <button id="submitBtn" class="btn-submit" onclick="sendToGoogleSheet()">Submit Results to Teacher</button>
+    <button id="submitBtn" class="btn-submit" onclick="sendToGoogleSheet()">Skicka resultat till läraren</button>
     <p id="statusMsg" style="margin-top:15px; font-weight:bold; color:#27ae60;"></p>
 </div>
 
@@ -58,11 +58,10 @@
     let timeLeft;
     let initialTime;
     let timerId;
-    let questions = [];
 
     function startQuiz() {
         const name = document.getElementById('studentName').value;
-        if(!name) return alert("Please enter your name!");
+        if(!name) return alert("Vänligen fyll i ditt namn!");
 
         initialTime = parseInt(document.getElementById('duration').value);
         timeLeft = initialTime;
@@ -76,11 +75,53 @@
 
     function generateQuestions() {
         const grid = document.getElementById('question-grid');
-        grid.innerHTML = ""; // Clear existing
-        for(let i=0; i<92; i++) {
-            let a = Math.floor(Math.random() * 11);
-            let b = Math.floor(Math.random() * 11);
-            grid.innerHTML += `<div class="q-box">${a} x ${b} = <input type="number" class="user-ans" data-correct="${a*b}"></div>`;
+        grid.innerHTML = ""; 
+
+        // Skapa alla möjliga kombinationer (0-10)
+        let allPossible = [];
+        for(let a = 0; a <= 10; a++) {
+            for(let b = 0; b <= 10; b++) {
+                allPossible.push({a, b});
+            }
+        }
+
+        // Slumpa ordningen (Fisher-Yates Shuffle)
+        for (let i = allPossible.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [allPossible[i], allPossible[j]] = [allPossible[j], allPossible[i]];
+        }
+
+        // Vi tar de första 92 frågorna (som i ditt original)
+        const selectedQuestions = allPossible.slice(0, 92);
+
+        selectedQuestions.forEach((q, index) => {
+            grid.innerHTML += `
+                <div class="q-box">
+                    ${q.a} x ${q.b} = 
+                    <input type="number" 
+                           class="user-ans" 
+                           data-correct="${q.a * q.b}" 
+                           onkeydown="handleEnter(event, ${index})">
+                </div>`;
+        });
+
+        // Sätt fokus på första rutan automatiskt
+        setTimeout(() => {
+            const firstInput = document.querySelector('.user-ans');
+            if(firstInput) firstInput.focus();
+        }, 100);
+    }
+
+    // Funktion för att hoppa till nästa ruta vid Enter
+    function handleEnter(event, index) {
+        if (event.key === "Enter") {
+            const inputs = document.querySelectorAll('.user-ans');
+            if (index + 1 < inputs.length) {
+                inputs[index + 1].focus();
+            } else {
+                // Om det var sista frågan, avsluta testet
+                finishQuiz();
+            }
         }
     }
 
@@ -95,7 +136,7 @@
     function updateTimerDisplay() {
         let mins = Math.floor(timeLeft / 60);
         let secs = timeLeft % 60;
-        document.getElementById('timer').innerText = `Time Remaining: ${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        document.getElementById('timer').innerText = `Tid kvar: ${mins}:${secs < 10 ? '0' : ''}${secs}`;
     }
 
     function finishQuiz() {
@@ -116,8 +157,8 @@
         document.getElementById('quiz-area').classList.add('hidden');
         document.getElementById('results').classList.remove('hidden');
         
-        document.getElementById('finalScore').innerText = `Correct Answers: ${correct} / 92`;
-        document.getElementById('finalTime').innerText = `Time Spent: ${timeString}`;
+        document.getElementById('finalScore').innerText = `Rätt svar: ${correct} / 92`;
+        document.getElementById('finalTime').innerText = `Tid: ${timeString}`;
     }
 
     async function sendToGoogleSheet() {
@@ -128,8 +169,8 @@
         const timeTaken = document.getElementById('finalTime').innerText;
 
         btn.disabled = true;
-        btn.innerText = "Sending...";
-        status.innerText = "Please wait, uploading to spreadsheet...";
+        btn.innerText = "Skickar...";
+        status.innerText = "Vänta, laddar upp till kalkylbladet...";
 
         const data = {
             name: name,
@@ -138,8 +179,6 @@
         };
 
         try {
-            // Using no-cors mode because Google Script returns a redirect that usually causes a CORS error
-            // but the data still arrives at the spreadsheet!
             await fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors', 
@@ -148,14 +187,14 @@
                 body: JSON.stringify(data)
             });
             
-            status.innerText = "✅ Success! Your results have been recorded.";
+            status.innerText = "✅ Klart! Dina resultat har sparats.";
             btn.style.display = "none";
         } catch (error) {
             console.error('Error!', error.message);
             status.style.color = "#e74c3c";
-            status.innerText = "❌ Error sending results. Please show your screen to the teacher.";
+            status.innerText = "❌ Fel vid inskickning. Visa skärmen för din lärare.";
             btn.disabled = false;
-            btn.innerText = "Try Submitting Again";
+            btn.innerText = "Försök skicka igen";
         }
     }
 </script>
